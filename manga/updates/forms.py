@@ -1,5 +1,6 @@
 from django import forms
 from django.core.exceptions import ValidationError
+from .models import MangaSeries
 
 class AddMangaForm(forms.Form):
     manga_URL = forms.URLField()
@@ -11,7 +12,11 @@ class AddMangaForm(forms.Form):
 
         #only do this check is manga_url is valid so far
         if manga_URL:
-            if "mangakakalot" not in manga_URL or "manganelo" not in manga_URL:
+            if "mangakakalot" not in manga_URL and "manganelo" not in manga_URL:
                 raise forms.ValidationError(
-                    "Website must be from mangakakalot or manganelo"
+                    "Website must be from mangakakalot or manganelo."
+                )
+            if MangaSeries.objects.filter(manga_URL=manga_URL).exists():
+                raise ValidationError(
+                    'Manga already added.'
                 )

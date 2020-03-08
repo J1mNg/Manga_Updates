@@ -5,6 +5,7 @@ from django.db import models
 class MangaSeries(models.Model):
     #picture
     name = models.CharField(max_length=50)
+    manga_URL = models.URLField(default=None, unique=True)
     last_updated =  models.DateTimeField(null=True, blank=True)
     paused = models.BooleanField(default=False)
 
@@ -12,8 +13,8 @@ class MangaSeries(models.Model):
             return self.name
 
 class MangaChapters(models.Model):
-    chapter_name = models.CharField(max_length=100)
-    manga_series = models.ForeignKey(MangaSeries, related_name="manga_series", on_delete="cascade")
+    chapter_URL = models.URLField(default=None)
+    manga_series = models.ForeignKey(MangaSeries, related_name="manga_series", on_delete=models.CASCADE)
 
     def __str__(self):
-            return self.chapter_name
+            return self.chapter_URL

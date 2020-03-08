@@ -1,12 +1,24 @@
 from django.shortcuts import render
+from django.urls import reverse_lazy
+
+from django.views.generic import FormView, ListView, CreateView, DeleteView
+
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.decorators import login_required
+from django.contrib.messages.views import SuccessMessageMixin
+from django.contrib import messages
+from django.core.exceptions import ValidationError
 
 from .forms import AddMangaForm
+from .models import MangaSeries, MangaChapters
 
 from bs4 import BeautifulSoup
 import requests
 import pandas as pd
 import csv
 import webbrowser
+
+from datetime import datetime, timedelta
 
 #Class to get values from the manga webpage
 class MangaURLValues(object):
@@ -50,10 +62,9 @@ class MangaURLValues(object):
         page_content = self.get_soup(manga_URL)
         manga_firstTag = page_content.find("ul", { "class" : "manga-info-text" })
         if manga_firstTag is None:
-            mangaName = page_content.find("div", { "class" : "story-info-right" }).find('h1').text
+            self.mangaName = page_content.find("div", { "class" : "story-info-right" }).find('h1').text
         else:
-            mangaName = manga_firstTag.findNext('h1').text
-        self.mangaName =  mangaName
+            self.mangaName = manga_firstTag.findNext('h1').text
         return self.mangaName
 
     def get_latestChapter(self, manga_URL):
@@ -70,6 +81,39 @@ def homepage(request):
     return render(request, "index.html")
 
 def add_manga(request):
-    form = AddMangaForm()
+    if request.method == 'POST':
+        # get data from form
+        form = AddMangaForm(request.POST)
+        if form.is_valid():
+            data = form.cleaned_data
+            manga_URL = data['manga_URL']
+
+            # use class to get manga name and list of 10 latest chapters
+            website = MangaURLValues()
+            website_manga_name = website.get_mangaName(manga_URL)
+            # returns list of 10 latest manga as manga URL
+            website_manga_chapters = website.get_chapterList(manga_URL)
+
+            # no chapters detected
+            # VALIDATION NEEDED FOR NO CHAPTERS AND URL 404 NOT FOUND
+            # NAME IS NONETYPE OBJECT DO THIS IN CLASS ABOVE
+            if not website_manga_chapters:
+                raise ValidationError(
+                    'Test'
+                )
+
+            # datetime object for when manga is added
+            now = datetime.now()
+
+            manga_series_data = MangaSeries(name=website_manga_name, manga_URL=manga_URL, last_updated=now)
+            manga_series_data.save()
+
+            for chapter in website_manga_chapters:
+                manga_latest_data = MangaChapters(chapter_URL=chapter, manga_series=manga_series_data)
+                manga_latest_data.save()
+
+            messages.add_message(request, messages.INFO, str(website_manga_name) + " successfully added.")
+    else:
+        form = AddMangaForm()
 
     return render(request, "add_manga.html", {"form":form})
