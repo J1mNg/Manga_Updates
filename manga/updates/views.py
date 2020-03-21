@@ -9,6 +9,7 @@ from django.contrib.messages.views import SuccessMessageMixin
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 
+from django import forms
 from .forms import AddMangaForm
 from .models import MangaSeries, MangaChapters
 
@@ -61,10 +62,13 @@ class MangaURLValues(object):
     def get_mangaName(self, manga_URL):
         page_content = self.get_soup(manga_URL)
         manga_firstTag = page_content.find("ul", { "class" : "manga-info-text" })
-        if manga_firstTag is None:
-            self.mangaName = page_content.find("div", { "class" : "story-info-right" }).find('h1').text
-        else:
-            self.mangaName = manga_firstTag.findNext('h1').text
+        try:
+            if manga_firstTag is None:
+                self.mangaName = page_content.find("div", { "class" : "story-info-right" }).find('h1').text
+            else:
+                self.mangaName = manga_firstTag.findNext('h1').text
+        except:
+            return False
         return self.mangaName
 
     def get_latestChapter(self, manga_URL):
@@ -91,16 +95,16 @@ def add_manga(request):
             # use class to get manga name and list of 10 latest chapters
             website = MangaURLValues()
             website_manga_name = website.get_mangaName(manga_URL)
+
+            ### VALIDATION NEEDED FOR NO CHAPTERS AND URL 404 NOT FOUND
+            # error message needs to be red
+
+            if website_manga_name == False:
+                messages.add_message(request, messages.INFO, "manga not found.")
+                return render(request, "add_manga.html", {"form":form})
+
             # returns list of 10 latest manga as manga URL
             website_manga_chapters = website.get_chapterList(manga_URL)
-
-            # no chapters detected
-            # VALIDATION NEEDED FOR NO CHAPTERS AND URL 404 NOT FOUND
-            # NAME IS NONETYPE OBJECT DO THIS IN CLASS ABOVE
-            if not website_manga_chapters:
-                raise ValidationError(
-                    'Test'
-                )
 
             # datetime object for when manga is added
             now = datetime.now()
@@ -117,3 +121,9 @@ def add_manga(request):
         form = AddMangaForm()
 
     return render(request, "add_manga.html", {"form":form})
+
+def update_manga(request):
+    if request.method == 'POST'
+        request = request.POST
+        if 'update_now' in get_request:
+            
