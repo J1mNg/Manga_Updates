@@ -1,4 +1,42 @@
 {% extends "base.html" %}
 {% block content %}
-    hello
+    {% for manga in manga_series %}
+      <article class="content-section">
+        <div class="row">
+          <div class="col col-lg-2">
+            <img class="img-thumbnail" src="...">
+          </div>
+          <div class="col">
+
+            <div class="row">
+              <div class="col">
+                <h5 class="mt-0">{{ manga.name }}</h5>
+              </div>
+              <div class="col">
+                <div class="float-right">
+                  <i class="fa fa-pause" aria-hidden="true"></i>
+                </div>
+              </div>
+            </div>
+
+            <ul class="list-group list-group-flush">
+              <li class="list-group-item">Latest Chapter: </li>
+              <li class="list-group-item">Last Updated: {{ manga.last_updated }}</li>
+              <li class="list-group-item">URL: </li>
+            </ul>
+          </div>
+        </div>
+      </article>
+    {% endfor %}
 {% endblock content %}
+
+<!-- <article class="media content-section">
+  <img class="rounded-circle article-img" src="">
+  <div class="media-body">
+    <h5 class="mt-0">{{ manga.name }}</h5>
+    <ul class="list-group list-group-flush">
+      <li class="list-group-item">Latest Posts</li>
+      <li class="list-group-item">Latest Posts</li>
+    </ul>
+  </div>
+</article> -->

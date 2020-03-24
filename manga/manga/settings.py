@@ -31,6 +31,7 @@ ALLOWED_HOSTS = []
 
 INSTALLED_APPS = [
     'updates.apps.UpdatesConfig',
+    'celery_progress',
     'crispy_forms',
     'django.contrib.admin',
     'django.contrib.auth',

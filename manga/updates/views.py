@@ -21,6 +21,10 @@ import webbrowser
 
 from datetime import datetime, timedelta
 
+from celery import shared_task
+from celery.task import Task
+from celery_progress.backend import ProgressRecorder
+
 #Class to get values from the manga webpage
 class MangaURLValues(object):
     #THIS MUST BE CALLED FIRST BEFORE OTHERS --> PRIORITY
@@ -79,10 +83,53 @@ class MangaURLValues(object):
         self.chapter_name = chapter_fullName.find('a').contents[0]
         return self.chapter_name
 
-# Create your views here.
-def homepage(request):
+# celery progress bar for updating manga backend
+class Update(Task):
+    name = "myapp.mytask"
 
-    return render(request, "index.html")
+    def update_manga(self):
+        progress_recorder = ProgressRecorder(self)
+        updated = 0
+        for manga in MangaSeries.objects.filter(paused=False):
+            manga_URL = manga.manga_URL
+            manga_chapters = MangaChapters.objects.filter(manga_series=manga)
+
+            # update the last_updated field
+            manga.last_updated = datetime.now()
+            manga.save()
+
+            old_chapters_list = manga_chapters.values_list('chapter_URL', flat=True)
+            updated_chapters_list = MangaURLValues().get_chapterList(manga_URL)
+
+            difference_manga_list = [item for item in updated_chapters_list if item not in old_chapters_list]
+
+            if difference_manga_list:
+                # update database with newest CHAPTERS
+                updated += 1
+
+                ### what is more efficient? delete all chapters and update??? ORRR delete the difference and update???
+                manga_chapters.delete()
+                for chapter in updated_chapters_list:
+                    manga_latest_data = MangaChapters(chapter_URL=chapter, manga_series=manga)
+                    manga_latest_data.save()
+
+                # open the chapters
+                for item in difference_manga_list:
+                    webbrowser.open(str(item))
+
+            progress_recorder.set_progress(i + 1, seconds)
+
+        return updated
+
+
+# Create your views here.
+
+# order the objects being displayed --> paused at the bottom --> otherwise name alphabetical
+# use template tags to get latest chapter
+
+def homepage(request):
+    manga_series = MangaSeries.objects.all()
+    return render(request, "index.html", {'manga_series':manga_series})
 
 def add_manga(request):
     if request.method == 'POST':
@@ -109,9 +156,11 @@ def add_manga(request):
             # datetime object for when manga is added
             now = datetime.now()
 
+            # add the manga series to database
             manga_series_data = MangaSeries(name=website_manga_name, manga_URL=manga_URL, last_updated=now)
             manga_series_data.save()
 
+            # add the 10 lateste chapters associated with the manga series
             for chapter in website_manga_chapters:
                 manga_latest_data = MangaChapters(chapter_URL=chapter, manga_series=manga_series_data)
                 manga_latest_data.save()
@@ -123,7 +172,35 @@ def add_manga(request):
     return render(request, "add_manga.html", {"form":form})
 
 def update_manga(request):
-    if request.method == 'POST'
-        request = request.POST
-        if 'update_now' in get_request:
-            
+    if request.method == 'POST':
+        request_button = request.POST
+        if 'update_now' in request_button:
+            #updated = Update.delay()
+
+            for manga in MangaSeries.objects.filter(paused=False):
+                manga_URL = manga.manga_URL
+                manga_chapters = MangaChapters.objects.filter(manga_series=manga)
+
+                # update the last_updated field
+                manga.last_updated = datetime.now()
+                manga.save()
+
+                old_chapters_list = manga_chapters.values_list('chapter_URL', flat=True)
+                updated_chapters_list = MangaURLValues().get_chapterList(manga_URL)
+
+                difference_manga_list = [item for item in updated_chapters_list if item not in old_chapters_list]
+
+                if difference_manga_list:
+                    # update database with newest CHAPTERS
+
+                    ### what is more efficient? delete all chapters and update??? ORRR delete the difference and update???
+                    manga_chapters.delete()
+                    for chapter in updated_chapters_list:
+                        manga_latest_data = MangaChapters(chapter_URL=chapter, manga_series=manga)
+                        manga_latest_data.save()
+
+                    # open the chapters
+                    for item in difference_manga_list:
+                        webbrowser.open(str(item))
+
+    return render(request, "update_manga.html")

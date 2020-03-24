@@ -1,4 +1,17 @@
 {% extends "base.html" %}
+{% load static %}
+{% block javascript%}
+<script src="{% static 'js/celery_progress.js' %}"></script>
+{% endblock javascript %}
+
 {% block content %}
-<button type="submit" name="update_now">Update</button></li>
+<form method="post">
+  {% csrf_token %}
+  <button type="submit" name="update_now">Update</button>
+</form>
+
+<div class='progress-wrapper'>
+  <div id='progress-bar' class='progress-bar' style="background-color: #68a9ef; width: 0%;">&nbsp;</div>
+</div>
+<div id="progress-bar-message">Waiting for progress to start...</div>
 {% endblock content %}

@@ -8,6 +8,7 @@ class MangaSeries(models.Model):
     manga_URL = models.URLField(default=None, unique=True)
     last_updated =  models.DateTimeField(null=True, blank=True)
     paused = models.BooleanField(default=False)
+    #image = models.ImageField(default='default.jpg', upload_to='manga_images')
 
     def __str__(self):
             return self.name
