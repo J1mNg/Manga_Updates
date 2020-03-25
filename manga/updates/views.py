@@ -27,31 +27,22 @@ from celery_progress.backend import ProgressRecorder
 
 #Class to get values from the manga webpage
 class MangaURLValues(object):
-    #THIS MUST BE CALLED FIRST BEFORE OTHERS --> PRIORITY
-    #scrapes website and returns soup (processed HTML)
-    #param {val} --> the URL of website
-    @staticmethod
-    def get_soup(val):
-        try:
-            page_response = requests.get(str(val))
-            page_content = BeautifulSoup(page_response.content, "html.parser")
-            return page_content
-        except (ConnectionError):
-            print("A")
-            ####do some error checking here if URL is invalid
+    def __init__(self, manga_URL):
+        self.manga_URL = manga_URL
+        # parse soup and return as page_content
+        page_response = requests.get(str(self.manga_URL))
+        page_content = BeautifulSoup(page_response.content, "html.parser")
+        self.page_content = page_content
 
     #This function --> returns the list of all chapters for a manga website URL
-    #param {manga_URL} --> the URL of website
-    #uses self.get_soup()
-    def get_chapterList(self, manga_URL):
-        page_content = self.get_soup(manga_URL)
+    def get_chapterList(self):
         chapterList = []
         #use beautifulsoup to
-        filtered = page_content.findAll(lambda tag: tag.name == 'div' and tag.get('class') == ['row'])[:10]
+        filtered = self.page_content.findAll(lambda tag: tag.name == 'div' and tag.get('class') == ['row'])[:10]
         #for all div tags in the soup, find the ones with class == 'row' EXACTLY
         #output first 10 chapters
         if not filtered:
-            filtered = page_content.findAll(lambda tag: tag.name == 'li' and tag.get('class') == ['a-h'])[:10]
+            filtered = self.page_content.findAll(lambda tag: tag.name == 'li' and tag.get('class') == ['a-h'])[:10]
         for div in filtered:
             #under each div tag, find the title of the a tag, which contains the title of the manga
             chapter = div.find('a')['href']
@@ -63,23 +54,21 @@ class MangaURLValues(object):
     #This function --> returns the name of manga from soup
     #param {manga_URL} --> the URL of website
     #uses self.get_soup()
-    def get_mangaName(self, manga_URL):
-        page_content = self.get_soup(manga_URL)
-        manga_firstTag = page_content.find("ul", { "class" : "manga-info-text" })
+    def get_mangaName(self):
+        manga_firstTag = self.page_content.find("ul", { "class" : "manga-info-text" })
         try:
             if manga_firstTag is None:
-                self.mangaName = page_content.find("div", { "class" : "story-info-right" }).find('h1').text
+                self.mangaName = self.page_content.find("div", { "class" : "story-info-right" }).find('h1').text
             else:
                 self.mangaName = manga_firstTag.findNext('h1').text
         except:
             return False
         return self.mangaName
 
-    def get_latestChapter(self, manga_URL):
-        page_content = self.get_soup(manga_URL)
-        chapter_fullName = page_content.find(lambda tag: tag.name == 'div' and tag.get('class') == ['row'])
+    def get_latestChapter(self):
+        chapter_fullName = self.page_content.find(lambda tag: tag.name == 'div' and tag.get('class') == ['row'])
         if not chapter_fullName:
-            chapter_fullName = page_content.find(lambda tag: tag.name == 'li' and tag.get('class') == ['a-h'])
+            chapter_fullName = self.page_content.find(lambda tag: tag.name == 'li' and tag.get('class') == ['a-h'])
         self.chapter_name = chapter_fullName.find('a').contents[0]
         return self.chapter_name
 
@@ -96,10 +85,11 @@ class Update(Task):
 
             # update the last_updated field
             manga.last_updated = datetime.now()
+            #manga.latest_chapter =
             manga.save()
 
             old_chapters_list = manga_chapters.values_list('chapter_URL', flat=True)
-            updated_chapters_list = MangaURLValues().get_chapterList(manga_URL)
+            updated_chapters_list = MangaURLValues(manga_URL).get_chapterList()
 
             difference_manga_list = [item for item in updated_chapters_list if item not in old_chapters_list]
 
@@ -125,9 +115,25 @@ class Update(Task):
 # Create your views here.
 
 # order the objects being displayed --> paused at the bottom --> otherwise name alphabetical
-# use template tags to get latest chapter
+### add a pause and delete button ###
 
 def homepage(request):
+    if request.method == 'POST':
+        request_button = request.POST
+        if 'pause' in request_button:
+            to_pause = request_button.getlist('pause')[0]
+            manga = MangaSeries.objects.get(pk=to_pause)
+            manga.paused = True
+            manga.save()
+        elif 'unpause' in request_button:
+            to_unpause = request_button.getlist('unpause')[0]
+            manga = MangaSeries.objects.get(pk=to_unpause)
+            manga.paused = False
+            manga.save()
+        elif 'delete' in request_button:
+            to_delete = request_button.getlist('delete')[0]
+            manga = MangaSeries.objects.get(pk=to_delete).delete()
+
     manga_series = MangaSeries.objects.all()
     return render(request, "index.html", {'manga_series':manga_series})
 
@@ -140,8 +146,8 @@ def add_manga(request):
             manga_URL = data['manga_URL']
 
             # use class to get manga name and list of 10 latest chapters
-            website = MangaURLValues()
-            website_manga_name = website.get_mangaName(manga_URL)
+            website = MangaURLValues(manga_URL)
+            website_manga_name = website.get_mangaName()
 
             ### VALIDATION NEEDED FOR NO CHAPTERS AND URL 404 NOT FOUND
             # error message needs to be red
@@ -151,13 +157,16 @@ def add_manga(request):
                 return render(request, "add_manga.html", {"form":form})
 
             # returns list of 10 latest manga as manga URL
-            website_manga_chapters = website.get_chapterList(manga_URL)
+            website_manga_chapters = website.get_chapterList()
+
+            # returns the name of the latest chapters
+            website_latest_chapter = website.get_latestChapter()
 
             # datetime object for when manga is added
             now = datetime.now()
 
             # add the manga series to database
-            manga_series_data = MangaSeries(name=website_manga_name, manga_URL=manga_URL, last_updated=now)
+            manga_series_data = MangaSeries(name=website_manga_name, manga_URL=manga_URL, last_updated=now, latest_chapter=website_latest_chapter)
             manga_series_data.save()
 
             # add the 10 lateste chapters associated with the manga series
@@ -180,13 +189,15 @@ def update_manga(request):
             for manga in MangaSeries.objects.filter(paused=False):
                 manga_URL = manga.manga_URL
                 manga_chapters = MangaChapters.objects.filter(manga_series=manga)
+                website = MangaURLValues(manga_URL)
 
                 # update the last_updated field
                 manga.last_updated = datetime.now()
+                manga.latest_chapter = website.get_latestChapter()
                 manga.save()
 
                 old_chapters_list = manga_chapters.values_list('chapter_URL', flat=True)
-                updated_chapters_list = MangaURLValues().get_chapterList(manga_URL)
+                updated_chapters_list = website.get_chapterList()
 
                 difference_manga_list = [item for item in updated_chapters_list if item not in old_chapters_list]
 

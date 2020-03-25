@@ -7,6 +7,7 @@ class MangaSeries(models.Model):
     name = models.CharField(max_length=50)
     manga_URL = models.URLField(default=None, unique=True)
     last_updated =  models.DateTimeField(null=True, blank=True)
+    latest_chapter = models.CharField(default=None, max_length=100)
     paused = models.BooleanField(default=False)
     #image = models.ImageField(default='default.jpg', upload_to='manga_images')
 

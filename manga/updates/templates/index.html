@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 {% block content %}
     {% for manga in manga_series %}
+    <form method="post">
+      {% csrf_token %}
       <article class="content-section">
         <div class="row">
           <div class="col col-lg-2">
@@ -9,24 +11,35 @@
           <div class="col">
 
             <div class="row">
-              <div class="col">
-                <h5 class="mt-0">{{ manga.name }}</h5>
+              <div class="col-md-auto">
+                <h4 class="mt-0"><strong>{{ manga.name }}</strong></h4>
               </div>
+              {% if manga.paused == True %}
+              <div class="col">
+                <i class="fa fa-pause" aria-hidden="true"></i>
+              </div>
+              {% endif %}
               <div class="col">
                 <div class="float-right">
-                  <i class="fa fa-pause" aria-hidden="true"></i>
+                  {% if manga.paused == True %}
+                  <button type="submit" class="btn btn-outline-dark btn-sm py-0" name="unpause" value="{{ manga.pk }}">Unpause</button>
+                  {% else %}
+                  <button type="submit" class="btn btn-outline-dark btn-sm py-0" name="pause" value="{{ manga.pk }}">Pause</button>
+                  {% endif %}
+                  <button type="submit" class="btn btn-outline-danger btn-sm py-0" name="delete" value="{{ manga.pk }}">Delete</button>
                 </div>
               </div>
             </div>
 
             <ul class="list-group list-group-flush">
-              <li class="list-group-item">Latest Chapter: </li>
-              <li class="list-group-item">Last Updated: {{ manga.last_updated }}</li>
-              <li class="list-group-item">URL: </li>
+              <li class="list-group-item"><strong>Latest Chapter:</strong> {{ manga.latest_chapter }}</li>
+              <li class="list-group-item"><strong>Last Updated:</strong> {{ manga.last_updated }}</li>
+              <li class="list-group-item"><strong>Manga Page:</strong> <a href="{{ manga.manga_URL }}" target="_blank">{{ manga.name }}</a> </li>
             </ul>
           </div>
         </div>
       </article>
+      </form>
     {% endfor %}
 {% endblock content %}
 
