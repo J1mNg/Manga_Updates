@@ -5,22 +5,27 @@
       {% csrf_token %}
       <article class="content-section">
         <div class="row">
-          <div class="col col-lg-2">
-            <img class="img-thumbnail" src="...">
+          <div class="col col-md-3 text-center justify-content-center align-self-center">
+            <img class="img-thumbnail center-block" src="{{manga.image.url}}">
           </div>
           <div class="col">
 
             <div class="row">
-              <div class="col-md-auto">
-                <h4 class="mt-0"><strong>{{ manga.name }}</strong></h4>
+              <div class="col-md-11">
+                  <h4 class="mt-0"><strong>{{ manga.name }}</strong></h4>
               </div>
               {% if manga.paused == True %}
-              <div class="col">
+              <div class="col-md-1">
                 <i class="fa fa-pause" aria-hidden="true"></i>
               </div>
               {% endif %}
-              <div class="col">
-                <div class="float-right">
+            </div>
+            <ul class="list-group list-group-flush">
+              <li class="list-group-item"><strong>Latest Chapter:</strong> {{ manga.latest_chapter }}</li>
+              <li class="list-group-item"><strong>Updated Locally:</strong> {{ manga.last_updated }}</li>
+              <li class="list-group-item"><strong>Manga Page:</strong> <a href="{{ manga.manga_URL }}" target="_blank">{{ manga.name }}</a> </li>
+              <li class="list-group-item">
+                <div class="float-left">
                   {% if manga.paused == True %}
                   <button type="submit" class="btn btn-outline-dark btn-sm py-0" name="unpause" value="{{ manga.pk }}">Unpause</button>
                   {% else %}
@@ -28,13 +33,7 @@
                   {% endif %}
                   <button type="submit" class="btn btn-outline-danger btn-sm py-0" name="delete" value="{{ manga.pk }}">Delete</button>
                 </div>
-              </div>
-            </div>
-
-            <ul class="list-group list-group-flush">
-              <li class="list-group-item"><strong>Latest Chapter:</strong> {{ manga.latest_chapter }}</li>
-              <li class="list-group-item"><strong>Last Updated:</strong> {{ manga.last_updated }}</li>
-              <li class="list-group-item"><strong>Manga Page:</strong> <a href="{{ manga.manga_URL }}" target="_blank">{{ manga.name }}</a> </li>
+              </li>
             </ul>
           </div>
         </div>

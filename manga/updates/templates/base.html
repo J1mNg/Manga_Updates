@@ -33,7 +33,7 @@
           </button>
           <div class="collapse navbar-collapse" id="navbarToggle">
             <div class="navbar-nav mr-auto">
-              <a class="nav-item nav-link" href="#">Home</a>
+              <a class="nav-item nav-link" href="{% url 'updates:updates-homepage' %}">Home</a>
               <a class="nav-item nav-link" href="{% url 'updates:updates-add_manga' %}">Add</a>
               <a class="nav-item nav-link" href="{% url 'updates:updates-update_manga' %}">Update</a>
             </div>
@@ -53,8 +53,8 @@
         </div>
         <div class="col-md-4">
           <div class="content-section">
-            <h3>Our Sidebar</h3>
-            <p class='text-muted'>You can put any information here you'd like.
+            <h3>Manga Info.</h3>
+            <p class='text-muted'>Some stats for the manga being tracked.
               <ul class="list-group">
                 <li class="list-group-item list-group-item-light">Latest Posts</li>
                 <li class="list-group-item list-group-item-light">Announcements</li>

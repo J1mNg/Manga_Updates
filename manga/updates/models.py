@@ -9,7 +9,7 @@ class MangaSeries(models.Model):
     last_updated =  models.DateTimeField(null=True, blank=True)
     latest_chapter = models.CharField(default=None, max_length=100)
     paused = models.BooleanField(default=False)
-    #image = models.ImageField(default='default.jpg', upload_to='manga_images')
+    image = models.ImageField(default='default.jpg', upload_to='manga_images/')
 
     def __str__(self):
             return self.name

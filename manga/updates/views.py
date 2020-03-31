@@ -9,9 +9,15 @@ from django.contrib.messages.views import SuccessMessageMixin
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 
+from django.core.files import File
+import tempfile
+
 from django import forms
 from .forms import AddMangaForm
 from .models import MangaSeries, MangaChapters
+
+from django.core import files
+from io import BytesIO
 
 from bs4 import BeautifulSoup
 import requests
@@ -64,6 +70,13 @@ class MangaURLValues(object):
         except:
             return False
         return self.mangaName
+
+    def get_mangaImage(self):
+        try:
+            self.link = self.page_content.find("span", { "class" : "info-image" }).find('img')['src']
+        except:
+            self.link = self.page_content.find("div", { "class" : "manga-info-pic" }).find('img')['src']
+        return self.link
 
     def get_latestChapter(self):
         chapter_fullName = self.page_content.find(lambda tag: tag.name == 'div' and tag.get('class') == ['row'])
@@ -134,7 +147,7 @@ def homepage(request):
             to_delete = request_button.getlist('delete')[0]
             manga = MangaSeries.objects.get(pk=to_delete).delete()
 
-    manga_series = MangaSeries.objects.all()
+    manga_series = MangaSeries.objects.all().order_by('paused')
     return render(request, "index.html", {'manga_series':manga_series})
 
 def add_manga(request):
@@ -148,26 +161,38 @@ def add_manga(request):
             # use class to get manga name and list of 10 latest chapters
             website = MangaURLValues(manga_URL)
             website_manga_name = website.get_mangaName()
+            website_manga_chapters = website.get_chapterList() # list of ten latest chapters as a URL
+            website_latest_chapter = website.get_latestChapter() # name of latest chapter
+            # datetime object for when manga is added
+            now = datetime.now()
 
             ### VALIDATION NEEDED FOR NO CHAPTERS AND URL 404 NOT FOUND
             # error message needs to be red
-
             if website_manga_name == False:
                 messages.add_message(request, messages.INFO, "manga not found.")
                 return render(request, "add_manga.html", {"form":form})
 
-            # returns list of 10 latest manga as manga URL
-            website_manga_chapters = website.get_chapterList()
-
-            # returns the name of the latest chapters
-            website_latest_chapter = website.get_latestChapter()
-
-            # datetime object for when manga is added
-            now = datetime.now()
-
             # add the manga series to database
             manga_series_data = MangaSeries(name=website_manga_name, manga_URL=manga_URL, last_updated=now, latest_chapter=website_latest_chapter)
             manga_series_data.save()
+
+            # add image
+            image_URL = str(website.get_mangaImage())
+            print(image_URL)
+            resp = requests.get(image_URL, stream=True)
+            # if image exists
+            #if resp.status_code == requests.codes.ok:
+
+            file_name = image_URL.split("/")[-1]
+            lf = tempfile.NamedTemporaryFile()
+            # Read the streamed image in sections
+            for block in resp.iter_content(1024 * 8):
+                # If no more file then stop
+                if not block:
+                    break
+                # Write image block to temporary file
+                lf.write(block)
+            manga_series_data.image.save(file_name, files.File(lf))
 
             # add the 10 lateste chapters associated with the manga series
             for chapter in website_manga_chapters:
